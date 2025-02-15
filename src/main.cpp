@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include <LiquidCrystal.h>
+#include <Servo.h>
+#include <Wire.h>
 
 // put function declarations here:
 int myFunction(int, int);
@@ -9,7 +12,8 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  
+  
 }
 
 // put function definitions here:
