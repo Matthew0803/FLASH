@@ -1,6 +1,5 @@
 #include <Arduino.h>
-#include <LiquidCrystal.h>
-#include <Servo.h>
+#include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
 // put function declarations here:
