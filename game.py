@@ -122,7 +122,7 @@ while running:
                     gif_index += 1  
 
                 if selected_answer == correct_answer:
-                    display_text("Correct!", FONT, GREEN, WIDTH // 2, HEIGHT // 2 + 120, center=True)
+                    display_text("Correct!", FONT, GREEN, WIDTH // 2, HEIGHT // 2 + 115, center=True)
                 else:
                     display_text("Incorrect!", FONT, RED, WIDTH // 2, HEIGHT // 2 + 100, center=True)
 
@@ -131,7 +131,7 @@ while running:
 
                 if answer_time is None:
                     answer_time = time.time()
-                elif time.time() - answer_time > 4:
+                elif time.time() - answer_time > 3.5:
                     next_question()
 
         if not is_answered:
