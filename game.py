@@ -1,5 +1,6 @@
 import pygame
 import os
+import time
 
 # Initialize Pygame
 pygame.init()
@@ -39,6 +40,7 @@ is_answered = False
 is_game_over = False
 showing_gif = False
 gif_index = 0
+answer_time = None  # Stores the time when the answer was selected
 
 # Load GIF frames
 def load_gif(folder):
@@ -55,8 +57,10 @@ correct_frames = load_gif("correct_gif")  # Folder should contain frame1.png, fr
 incorrect_frames = load_gif("incorrect_gif")  # Folder should contain frame1.png, frame2.png, etc.
 
 # Function to display text
-def display_text(text, font, color, x, y):
+def display_text(text, font, color, x, y, center=False):
     label = font.render(text, True, color)
+    if center:
+        x = WIDTH // 2 - label.get_width() // 2
     screen.blit(label, (x, y))
 
 # Function to draw answer buttons (lowered on the screen)
@@ -73,6 +77,20 @@ def draw_buttons(options, highlight_index=None):
         pygame.draw.rect(screen, color, (50, y_offset + idx * (button_height + 10), button_width, button_height), border_radius=radius)
         display_text(option, FONT, WHITE, 75, y_offset + idx * (button_height + 10) + 10)
 
+# Function to move to the next question
+def next_question():
+    global question_index, is_answered, selected_answer, showing_gif, gif_index, is_game_over, answer_time
+    
+    question_index += 1
+    if question_index >= len(flashcards):  # End the game if all questions are asked
+        is_game_over = True
+    else:
+        is_answered = False
+        selected_answer = None
+        showing_gif = False
+        gif_index = 0
+        answer_time = None  # Reset answer time
+
 # Main game loop
 running = True
 while running:
@@ -83,38 +101,44 @@ while running:
             running = False
 
     if is_game_over:
-        display_text(f"Game Over! Final Score: {score}", FONT, YELLOW, 150, 180)
+        display_text(f"Game Over! Final Score: {score}", FONT, YELLOW, WIDTH // 2, 180, center=True)
 
     else:
         question, options, correct_answer = flashcards[question_index]
 
         # Display question
-        display_text(question, FONT, YELLOW, 50, 50)
+        display_text(question, FONT, YELLOW, WIDTH // 2, 50, center=True)
 
         if not is_answered:
             draw_buttons(options)
 
         else:
-            # Play GIF animation
+            # Show GIF animation
             if showing_gif:
                 if gif_index < len(correct_frames):  # Keep playing GIF frames
                     if selected_answer == correct_answer:
-                        screen.blit(correct_frames[gif_index], (150, 250))  # Adjust position
+                        frame = correct_frames[gif_index]
                     else:
-                        screen.blit(incorrect_frames[gif_index], (150, 250))
+                        frame = incorrect_frames[gif_index]
+
+                    # Center the GIF
+                    frame_rect = frame.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                    screen.blit(frame, frame_rect)
 
                     gif_index += 1  # Move to the next frame
-                else:
-                    # GIF finished playing, move to the next question
-                    showing_gif = False
-                    gif_index = 0
 
-                    question_index += 1
-                    if question_index >= len(flashcards):  # End the game if all questions are asked
-                        is_game_over = True
-                    else:
-                        is_answered = False
-                        selected_answer = None
+                # Show feedback text (correct/incorrect)
+                if selected_answer == correct_answer:
+                    display_text("Correct!", FONT, GREEN, WIDTH // 2, HEIGHT // 2 + 100, center=True)
+                else:
+                    display_text("Incorrect!", FONT, RED, WIDTH // 2, HEIGHT // 2 + 100, center=True)
+                    display_text(f"Correct Answer: {correct_answer}", FONT, YELLOW, WIDTH // 2, HEIGHT // 2 + 140, center=True)
+
+                # Move to next question after 5 seconds
+                if answer_time is None:
+                    answer_time = time.time()  # Store the time the answer was selected
+                elif time.time() - answer_time > 5:
+                    next_question()
 
         # Handle input
         if not is_answered:
@@ -153,7 +177,7 @@ while running:
             draw_buttons(options, highlight_index)
 
         # Display score
-        display_text(f"Score: {score}", FONT, WHITE, 250, 20)
+        display_text(f"Score: {score}", FONT, WHITE, WIDTH // 2, 20, center=True)
 
     pygame.display.flip()
     clock.tick(FPS)
