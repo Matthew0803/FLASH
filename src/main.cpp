@@ -1,21 +1,23 @@
-#include <Arduino.h>
-#include <LiquidCrystal_I2C.h>
-#include <Wire.h>
+#include <IRremote.h>
 
-// put function declarations here:
-int myFunction(int, int);
+const int RECV_PIN = 2;  // Change to the pin where your IR receiver is connected
+IRrecv irrecv(RECV_PIN);
+decode_results results;
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  Serial.begin(9600);
+  irrecv.enableIRIn(); // Start the IR receiver
+  Serial.println("IR Receiver Test - Press any button on the remote");
 }
 
 void loop() {
-  
-  
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  if (irrecv.decode(&results)) {
+    Serial.print("Received IR Code: ");
+    Serial.print(results.value, HEX);  // Print the code in HEX format
+    Serial.print(" (Decimal: ");
+    Serial.print(results.value, DEC);  // Print the code in Decimal format
+    Serial.println(")");
+    
+    irrecv.resume(); // Resume receiving the next IR signal
+  }
 }
