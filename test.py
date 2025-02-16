@@ -3,6 +3,7 @@ import os
 import time
 import json
 import serial
+import sys
 
 # Initialize Pygame
 pygame.init()
@@ -37,13 +38,13 @@ flashcards = load_flashcards("flashcards.json")
 # Game Variables
 score = 0
 question_index = 0
-highlight_index = 0  # Tracks highlighted option
 selected_answer = None
 is_answered = False
 is_game_over = False
 showing_gif = False
 gif_index = 0
 answer_time = None
+highlight_index = 0  # Initialize highlight index
 
 # Load GIF frames
 def load_gif(folder):
@@ -66,14 +67,16 @@ def display_text(text, font, color, x, y, center=False):
     screen.blit(label, (x, y))
 
 # Function to draw answer buttons
-def draw_buttons(options, highlight_index):
+def draw_buttons(options, highlight_index=None):
     button_height = 50  
     button_width = 500
     y_offset = 550  
     radius = 20  
 
     for idx, option in enumerate(options):
-        color = GREEN if idx == highlight_index else BLUE
+        color = BLUE
+        if idx == highlight_index:
+            color = GREEN  # Highlight correct selection
         pygame.draw.rect(screen, color, (50, y_offset + idx * (button_height + 10), button_width, button_height), border_radius=radius)
         display_text(option, FONT, WHITE, 75, y_offset + idx * (button_height + 10) + 10)
 
@@ -90,14 +93,15 @@ def next_question():
         showing_gif = False
         gif_index = 0
         answer_time = None
-        highlight_index = 0  # Reset highlight for next question
+        highlight_index = 0 # Reset highlight index
 
 # Serial communication setup
 try:
     ser = serial.Serial('COM5', 9600)  # Replace 'COM5' with your Arduino's serial port
 except serial.SerialException as e:
     print(f"Error opening serial port: {e}")
-    exit()
+    sys.exit() # Proper exit on serial error
+
 
 running = True
 while running:
@@ -106,13 +110,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not is_answered:
-            # Confirm selection with Enter
-            selected_answer = ["A", "B", "C", "D"][highlight_index]
-            is_answered = True
-            showing_gif = True
-            if selected_answer == flashcards[question_index]["correct"]:
-                score += 1
 
     if is_game_over:
         display_text(f"Game Over! Final Score: {score}", FONT, YELLOW, WIDTH // 2, 180, center=True)
@@ -123,48 +120,57 @@ while running:
         options = question_data["options"]
         correct_answer = question_data["correct"]
 
-        # Display question and options immediately
         display_text(question, FONT, YELLOW, WIDTH // 2, 50, center=True)
-        draw_buttons(options, highlight_index)
 
-        # Read joystick input (only if the answer is not confirmed)
+        if not is_answered:
+            draw_buttons(options, highlight_index)  # Initial drawing
+
+        else:
+            if showing_gif:
+                if gif_index < len(correct_frames):  
+                    frame = correct_frames[gif_index] if selected_answer == correct_answer else incorrect_frames[gif_index]
+                    screen.blit(frame, frame.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+                    gif_index += 1  
+
+                if selected_answer == correct_answer:
+                    display_text("Correct!", FONT, GREEN, WIDTH // 2, HEIGHT // 2 + 115, center=True)
+                else:
+                    display_text("Incorrect!", FONT, RED, WIDTH // 2, HEIGHT // 2 + 80, center=True)
+
+                display_text(f"Correct Answer: {correct_answer}", FONT, YELLOW, WIDTH // 2, HEIGHT // 2 + 140, center=True)
+
+
+                if answer_time is None:
+                    answer_time = time.time()
+                elif time.time() - answer_time > 3.5:
+                    next_question()
+
         if not is_answered:
             try:
                 line = ser.readline().decode('utf-8').strip()
-                if line == "UP":
-                    highlight_index = (highlight_index - 1) % len(options)
-                elif line == "DOWN":
-                    highlight_index = (highlight_index + 1) % len(options)
-                elif line == "SELECT":
-                    selected_answer = ["A", "B", "C", "D"][highlight_index]
-                    is_answered = True
-                    showing_gif = True
-                    if selected_answer == correct_answer:
-                        score += 1
+                #double checking if line read is a INT
+                if line.isdigit():
+                    #REALLY MAKING SURE ITS A INT
+                    y = int(line)
+                    if y < 300 and y != 1:  # Up
+                        highlight_index = (highlight_index - 1) % len(options)
+                    elif y > 700:  # Down
+                        highlight_index = (highlight_index + 1) % len(options)
+
+                    elif y == 1:  # Answer submitted
+                        selected_answer = chr(ord('A') + highlight_index)  # Convert index to letter
+                        is_answered = True
+                        showing_gif = True
+                        if selected_answer == correct_answer:
+                            score += 1
+
+                    draw_buttons(options, highlight_index) #Highlight the selected answer
+                    pygame.display.flip() #Update the display
+
             except serial.SerialException as e:
                 print(f"Serial communication error: {e}")
-                running = False  # Exit the game loop if serial communication fails
-
-        if is_answered and showing_gif:
-            # Display correct/incorrect GIF
-            if gif_index < len(correct_frames):  
-                frame = correct_frames[gif_index] if selected_answer == correct_answer else incorrect_frames[gif_index]
-                screen.blit(frame, frame.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
-                gif_index += 1  
-
-            # Show feedback
-            if selected_answer == correct_answer:
-                display_text("Correct!", FONT, GREEN, WIDTH // 2, HEIGHT // 2 + 115, center=True)
-            else:
-                display_text("Incorrect!", FONT, RED, WIDTH // 2, HEIGHT // 2 + 100, center=True)
-
-            display_text(f"Correct Answer: {correct_answer}", FONT, YELLOW, WIDTH // 2, HEIGHT // 2 + 140, center=True)
-
-            # Timer for moving to the next question
-            if answer_time is None:
-                answer_time = time.time()
-            elif time.time() - answer_time > 3.5:
-                next_question()
+                running = False
+                break # Exit the loop on error to prevent further attempts
 
         display_text(f"Score: {score}", FONT, WHITE, WIDTH // 2, 20, center=True)
 
@@ -174,3 +180,4 @@ while running:
 pygame.quit()
 if 'ser' in locals() and ser.is_open:
     ser.close()
+sys.exit()
