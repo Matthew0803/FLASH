@@ -9,4 +9,5 @@ FLASH(Flashcard, Learning and Study Helper) is a study bot that use Pomodoro-bas
 multiple choice flash card after the study session, help student to reinforce learning
 - Raspberry Pi: monitor
 -  Arduino joystick module: controlLer
+-  Pygame: flashcard UI and gameflow
 
